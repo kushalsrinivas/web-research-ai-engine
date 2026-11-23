@@ -248,6 +248,11 @@ services:
     environment:
       <<: *app-env
       PORT: "8085"
+      ETL_CONCURRENCY: ${ETL_CONCURRENCY:-2}
+      ETL_MIN_WORDS: ${ETL_MIN_WORDS:-25}
+      ETL_MIN_QUALITY: ${ETL_MIN_QUALITY:-0.35}
+      ETL_DISPATCH_INTERVAL_SECONDS: ${ETL_DISPATCH_INTERVAL_SECONDS:-5}
+      ETL_MAX_TEXT_BYTES: ${ETL_MAX_TEXT_BYTES:-2097152}
     ports:
       - "127.0.0.1:${PARSER_HOST_PORT:-8085}:8085"
     depends_on: *app-depends

@@ -170,7 +170,13 @@ func (s *Store) Enqueue(ctx context.Context, input EnqueueInput) (Job, bool, err
 		jobID, sourceID, documentID, input.URL, input.URLHash, input.Host,
 		input.TenantID, input.Lane, input.Method, input.Depth, payload), &job)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Job{}, false, nil
+		// A duplicate enqueue still returns the live job so operators can
+		// follow the crawl instead of receiving an empty payload.
+		existing, findErr := s.activeJob(ctx, input.URLHash)
+		if findErr != nil {
+			return Job{}, false, findErr
+		}
+		return existing, false, nil
 	}
 	if err != nil {
 		return Job{}, false, err
@@ -179,6 +185,17 @@ func (s *Store) Enqueue(ctx context.Context, input EnqueueInput) (Job, bool, err
 		return Job{}, false, err
 	}
 	return job, true, nil
+}
+
+func (s *Store) activeJob(ctx context.Context, urlHash []byte) (Job, error) {
+	var job Job
+	err := scanJob(s.pool.QueryRow(ctx, `select `+jobColumns+` from fetcher.jobs
+		where url_hash = $1 and status in ('pending', 'dispatched', 'leased', 'retrying')
+		order by created_at desc limit 1`, urlHash), &job)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Job{}, nil
+	}
+	return job, err
 }
 
 // Claim takes a lease only if no other worker owns the job. Re-delivered Kafka

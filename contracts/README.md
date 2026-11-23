@@ -8,6 +8,7 @@ events/v1/envelope.schema.json          common doc.* envelope
 events/v1/payloads/*.schema.json        event-specific payloads
 fixtures/events/*.valid.json            shared valid fixtures
 fixtures/events/invalid/*.json          fixtures that must be rejected
+documents/v1/canonical-document.schema.json  ETL canonical document
 ```
 
 ## Validation

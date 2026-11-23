@@ -13,6 +13,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY python/pyproject.toml python/uv.lock ./
+COPY contracts ./contracts
 COPY python/packages ./packages
 COPY python/services ./services
 RUN --mount=type=cache,target=/root/.cache/uv \
