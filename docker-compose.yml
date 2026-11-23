@@ -1,0 +1,420 @@
+name: wre
+
+x-app-env: &app-env
+  APP_ENV: ${APP_ENV:-development}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  SERVICE_VERSION: ${VERSION:-dev}
+  DATABASE_URL: postgres://${POSTGRES_USER:-wre}:${POSTGRES_PASSWORD:-wre}@postgres:5432/${POSTGRES_DB:-wre}?sslmode=disable
+  KAFKA_BROKERS: redpanda:9092
+  S3_ENDPOINT: http://silo:9000
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-wre}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:-wre-secret}
+  S3_BUCKET_RAW: ${S3_BUCKET_RAW:-wre-raw}
+  S3_BUCKET_PARSED: ${S3_BUCKET_PARSED:-wre-parsed}
+  S3_BUCKET_ENRICHED: ${S3_BUCKET_ENRICHED:-wre-enriched}
+  TEMPORAL_HOST: temporal:7233
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+  OTEL_SERVICE_NAMESPACE: wre
+  OTEL_SAMPLE_RATIO: ${OTEL_SAMPLE_RATIO:-}
+
+x-go-build: &go-build
+  context: .
+  dockerfile: deploy/compose/go.Dockerfile
+
+x-python-build: &python-build
+  context: .
+  dockerfile: deploy/compose/python.Dockerfile
+
+x-app-depends: &app-depends
+  migrate:
+    condition: service_completed_successfully
+  silo-init:
+    condition: service_completed_successfully
+
+x-go-healthcheck: &go-healthcheck
+  test: ["CMD", "/app/service", "healthcheck"]
+  interval: 5s
+  timeout: 3s
+  retries: 12
+  start_period: 5s
+
+x-python-healthcheck: &python-healthcheck
+  interval: 5s
+  timeout: 3s
+  retries: 12
+  start_period: 5s
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wre}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wre}
+      POSTGRES_DB: ${POSTGRES_DB:-wre}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/compose/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    image: postgres:16-alpine
+    entrypoint: ["/bin/sh", "/scripts/migrate.sh"]
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-wre}:${POSTGRES_PASSWORD:-wre}@postgres:5432/${POSTGRES_DB:-wre}?sslmode=disable
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./sql/migrations:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  silo:
+    image: pgsty/silo:RELEASE.2026-11-12T00-00-00Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-wre}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-wre-secret}
+    ports:
+      - "127.0.0.1:${S3_PORT:-9000}:9000"
+      - "127.0.0.1:${S3_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - silo-data:/data
+    restart: unless-stopped
+
+  silo-init:
+    image: pgsty/mc:RELEASE.2026-11-12T00-00-00Z
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        i=0;
+        until mc alias set local http://silo:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
+          i=$$((i + 1)); [ "$$i" -ge 60 ] && exit 1; sleep 1;
+        done;
+        mc mb --ignore-existing local/${S3_BUCKET_RAW:-wre-raw} local/${S3_BUCKET_PARSED:-wre-parsed} local/${S3_BUCKET_ENRICHED:-wre-enriched}
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-wre}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-wre-secret}
+    depends_on:
+      silo:
+        condition: service_started
+    restart: "no"
+
+  redpanda:
+    image: redpandadata/redpanda:v26.3.1
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+    ports:
+      - "127.0.0.1:19092:19092"
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  temporal:
+    image: temporalio/auto-setup:1.23.1.1
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-wre}
+      POSTGRES_PWD: ${POSTGRES_PASSWORD:-wre}
+      POSTGRES_SEEDS: postgres
+    ports:
+      - "127.0.0.1:${TEMPORAL_PORT:-7233}:7233"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "temporal:7233"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+  api:
+    build:
+      <<: *go-build
+      args:
+        SERVICE: api
+        VERSION: ${VERSION:-dev}
+    image: ${IMAGE_PREFIX:-wre}/api:${TAG:-dev}
+    environment:
+      <<: *app-env
+      PORT: "8080"
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on: *app-depends
+    healthcheck: *go-healthcheck
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      <<: *go-build
+      args:
+        SERVICE: scheduler
+        VERSION: ${VERSION:-dev}
+    image: ${IMAGE_PREFIX:-wre}/scheduler:${TAG:-dev}
+    environment:
+      <<: *app-env
+      PORT: "8081"
+    ports:
+      - "127.0.0.1:8081:8081"
+    depends_on: *app-depends
+    healthcheck: *go-healthcheck
+    restart: unless-stopped
+
+  fetcher:
+    build:
+      <<: *go-build
+      args:
+        SERVICE: fetcher
+        VERSION: ${VERSION:-dev}
+    image: ${IMAGE_PREFIX:-wre}/fetcher:${TAG:-dev}
+    environment:
+      <<: *app-env
+      PORT: "8082"
+      FETCHER_MAX_CONCURRENCY: ${FETCHER_MAX_CONCURRENCY:-20}
+      FETCHER_TIMEOUT_SECONDS: ${FETCHER_TIMEOUT_SECONDS:-30}
+    ports:
+      - "127.0.0.1:8082:8082"
+    depends_on: *app-depends
+    healthcheck: *go-healthcheck
+    restart: unless-stopped
+
+  indexer:
+    build:
+      <<: *go-build
+      args:
+        SERVICE: indexer
+        VERSION: ${VERSION:-dev}
+    image: ${IMAGE_PREFIX:-wre}/indexer:${TAG:-dev}
+    environment:
+      <<: *app-env
+      PORT: "8083"
+    ports:
+      - "127.0.0.1:8083:8083"
+    depends_on: *app-depends
+    healthcheck: *go-healthcheck
+    restart: unless-stopped
+
+  reconciler:
+    build:
+      <<: *go-build
+      args:
+        SERVICE: reconciler
+        VERSION: ${VERSION:-dev}
+    image: ${IMAGE_PREFIX:-wre}/reconciler:${TAG:-dev}
+    environment:
+      <<: *app-env
+      PORT: "8084"
+    ports:
+      - "127.0.0.1:8084:8084"
+    depends_on: *app-depends
+    healthcheck: *go-healthcheck
+    restart: unless-stopped
+
+  parser:
+    build: *python-build
+    image: ${IMAGE_PREFIX:-wre}/parser:${TAG:-dev}
+    command: ["wre_parser"]
+    environment:
+      <<: *app-env
+      PORT: "8085"
+    ports:
+      - "127.0.0.1:8085:8085"
+    depends_on: *app-depends
+    healthcheck:
+      <<: *python-healthcheck
+      test: ["CMD", "python", "-m", "wre_pipeline.healthcheck", "8085"]
+    restart: unless-stopped
+
+  enricher:
+    build: *python-build
+    image: ${IMAGE_PREFIX:-wre}/enricher:${TAG:-dev}
+    command: ["wre_enricher"]
+    environment:
+      <<: *app-env
+      PORT: "8086"
+    ports:
+      - "127.0.0.1:8086:8086"
+    depends_on: *app-depends
+    healthcheck:
+      <<: *python-healthcheck
+      test: ["CMD", "python", "-m", "wre_pipeline.healthcheck", "8086"]
+    restart: unless-stopped
+
+  graph-builder:
+    build: *python-build
+    image: ${IMAGE_PREFIX:-wre}/graph-builder:${TAG:-dev}
+    command: ["wre_graph_builder"]
+    environment:
+      <<: *app-env
+      PORT: "8087"
+    ports:
+      - "127.0.0.1:8087:8087"
+    depends_on: *app-depends
+    healthcheck:
+      <<: *python-healthcheck
+      test: ["CMD", "python", "-m", "wre_pipeline.healthcheck", "8087"]
+    restart: unless-stopped
+
+  llm-gateway:
+    build: *python-build
+    image: ${IMAGE_PREFIX:-wre}/llm-gateway:${TAG:-dev}
+    command: ["wre_llm_gateway"]
+    environment:
+      <<: *app-env
+      PORT: "8088"
+      LLM_PROVIDER: ${LLM_PROVIDER:-stub}
+      LLM_MODEL: ${LLM_MODEL:-stub}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+    ports:
+      - "127.0.0.1:8088:8088"
+    depends_on: *app-depends
+    healthcheck:
+      <<: *python-healthcheck
+      test: ["CMD", "python", "-m", "wre_pipeline.healthcheck", "8088"]
+    restart: unless-stopped
+
+  research-orchestrator:
+    build: *python-build
+    image: ${IMAGE_PREFIX:-wre}/research-orchestrator:${TAG:-dev}
+    command: ["wre_research_orchestrator"]
+    environment:
+      <<: *app-env
+      PORT: "8089"
+    ports:
+      - "127.0.0.1:8089:8089"
+    depends_on: *app-depends
+    healthcheck:
+      <<: *python-healthcheck
+      test: ["CMD", "python", "-m", "wre_pipeline.healthcheck", "8089"]
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.165.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./deploy/compose/otel/config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+    depends_on:
+      - tempo
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.10.10
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./deploy/compose/tempo/config.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "127.0.0.1:${TEMPO_PORT:-3200}:3200"
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.7.10
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./deploy/compose/loki/config.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "127.0.0.1:${LOKI_PORT:-3100}:3100"
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:3.6.11
+    command: ["-config.file=/etc/promtail/config.yaml"]
+    volumes:
+      - ./deploy/compose/promtail/config.yaml:/etc/promtail/config.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.16.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=13d
+      - --web.enable-lifecycle
+    volumes:
+      - ./deploy/compose/prometheus/config.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:12.4.15
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./deploy/compose/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    restart: unless-stopped
+
+  redpanda-console:
+    image: redpandadata/console:v3.15.0
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+    ports:
+      - "127.0.0.1:${REDPANDA_CONSOLE_PORT:-8090}:8080"
+    depends_on:
+      - redpanda
+    profiles: ["tools"]
+    restart: unless-stopped
+
+  temporal-ui:
+    image: temporalio/ui:2.58.1
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:8233
+    ports:
+      - "127.0.0.1:${TEMPORAL_UI_PORT:-8233}:8080"
+    depends_on:
+      temporal:
+        condition: service_healthy
+    profiles: ["tools"]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  silo-data:
+  redpanda-data:
+  tempo-data:
+  loki-data:
+  prometheus-data:
+  grafana-data:

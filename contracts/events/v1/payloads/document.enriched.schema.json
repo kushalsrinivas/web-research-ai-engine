@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wre.dev/schemas/events/v1/payloads/document.enriched.schema.json",
+  "title": "document.enriched payload",
+  "type": "object",
+  "required": [
+    "enrichment_version",
+    "summary_chars",
+    "chunk_count",
+    "entity_count",
+    "claim_count",
+    "embedding_model",
+    "embedding_dim",
+    "token_cost",
+    "degraded"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "enrichment_version": {"type": "string", "minLength": 1},
+    "summary_chars": {"type": "integer", "minimum": 0},
+    "chunk_count": {"type": "integer", "minimum": 0},
+    "entity_count": {"type": "integer", "minimum": 0},
+    "claim_count": {"type": "integer", "minimum": 0},
+    "embedding_model": {"type": "string", "minLength": 1},
+    "embedding_dim": {"type": "integer", "minimum": 1},
+    "token_cost": {"type": "number", "minimum": 0},
+    "degraded": {"type": "boolean"}
+  }
+}

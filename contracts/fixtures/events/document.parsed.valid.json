@@ -1,0 +1,33 @@
+{
+  "event_id": "01JB2Q8Z9K4T7V3M6R1N5C0X8R",
+  "event_type": "document.parsed",
+  "schema_version": 1,
+  "occurred_at": "2026-11-22T10:00:02.000Z",
+  "producer": "parser@0.1.0+9f2c1ab",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "tenant_id": "public",
+  "attempt": 1,
+  "document": {
+    "document_id": "01JB2Q1H7S5D9F4K2M8N6P3R0T",
+    "revision": 1,
+    "state": "deduplicated"
+  },
+  "artifacts": [
+    {
+      "kind": "parsed",
+      "uri": "s3://wre-parsed/public/ab/cd/abcdef.json.zst",
+      "sha256": "3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a",
+      "bytes": 18234,
+      "codec": "zstd"
+    }
+  ],
+  "payload": {
+    "extractor": "readability+trafilatura",
+    "parser_version": "0.1.0",
+    "word_count": 1840,
+    "language": "en",
+    "canonical_url_changed": false,
+    "duplicate": false,
+    "simhash": "0x91ab34c02d7e8811"
+  }
+}

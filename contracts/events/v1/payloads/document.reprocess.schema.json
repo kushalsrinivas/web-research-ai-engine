@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wre.dev/schemas/events/v1/payloads/document.reprocess.schema.json",
+  "title": "document.reprocess payload",
+  "type": "object",
+  "required": ["mode", "target_version", "reason", "requested_by"],
+  "additionalProperties": true,
+  "properties": {
+    "mode": {"type": "string", "enum": ["reparse", "reenrich", "reindex", "regraph", "refetch"]},
+    "target_version": {"type": "string", "minLength": 1},
+    "reason": {"type": "string", "minLength": 1},
+    "requested_by": {"type": "string", "minLength": 1}
+  }
+}

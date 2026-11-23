@@ -1,0 +1,19 @@
+[project]
+name = "wre-research-orchestrator"
+version = "0.1.0"
+description = "Web Research Engine research orchestrator service"
+requires-python = ">=3.12"
+dependencies = ["wre-pipeline"]
+
+[project.scripts]
+wre-research-orchestrator = "wre_research_orchestrator.__main__:main"
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+wre-pipeline = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wre_research_orchestrator"]

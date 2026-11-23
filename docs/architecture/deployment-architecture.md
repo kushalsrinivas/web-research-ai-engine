@@ -25,15 +25,20 @@ enricher         (no HTTP)
 graph-builder    (no HTTP)
 llm-gateway      :8083  (internal)
 llm-stub         :8084  (deterministic fixtures, no network)
-redpanda         :9092  (+ console :8088)
+redpanda         :9092  (+ console :8090)
 postgres         :5432  (pgvector)
-minio            :9000  (+ console :9001)
+s3 (silo)        :9000  (+ console :9001; see ADR-0011)
 temporal         :7233  (+ ui :8233)
 reconciler       (no HTTP)
 ```
 
-Compose profiles: `core` (everything except browser), `browser` (chromium + fetcher),
-`tools` (console, temporal UI). `make dev` starts `core`; `make e2e` starts all.
+Compose profiles: `core` (all runtime services and observability), `tools` (Redpanda
+console, Temporal UI). The browser profile arrives with fetch/render logic. `make dev`
+starts `core`; `make e2e` starts everything and runs the smoke check.
+
+Every service also exposes a probe-only `/healthz`, `/readyz`, and `/metrics` listener. The
+Phase 1 compose stack assigns these listeners ports 8080–8089; "no HTTP" above means no
+business HTTP surface.
 
 Resource limits in Compose are the same ratios as production requests, so a runaway service
 fails locally too.

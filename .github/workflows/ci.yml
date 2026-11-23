@@ -1,0 +1,161 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Format check
+        run: test -z "$(gofmt -l $(find . -name '*.go' -not -path './python/*'))"
+      - name: Vet
+        run: go vet ./...
+      - name: Unit and contract tests
+        run: go test -race ./...
+      - name: Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15.0
+          args: --timeout=5m
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.8.6"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: python/uv.lock
+      - name: Install workspace
+        working-directory: python
+        run: uv sync --frozen --all-packages
+      - name: Format check
+        working-directory: python
+        run: uv run ruff format --check .
+      - name: Lint
+        working-directory: python
+        run: uv run ruff check .
+      - name: Type check
+        working-directory: python
+        run: uv run mypy packages/wre_pipeline/src services/*/src
+      - name: Unit tests
+        working-directory: python
+        run: uv run pytest
+      - name: Contract tests
+        working-directory: python
+        run: uv run pytest tests/test_contracts.py
+
+  build:
+    needs: [go, python]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: api
+            dockerfile: deploy/compose/go.Dockerfile
+            build_args: SERVICE=api
+          - service: scheduler
+            dockerfile: deploy/compose/go.Dockerfile
+            build_args: SERVICE=scheduler
+          - service: fetcher
+            dockerfile: deploy/compose/go.Dockerfile
+            build_args: SERVICE=fetcher
+          - service: indexer
+            dockerfile: deploy/compose/go.Dockerfile
+            build_args: SERVICE=indexer
+          - service: reconciler
+            dockerfile: deploy/compose/go.Dockerfile
+            build_args: SERVICE=reconciler
+          - service: parser
+            dockerfile: deploy/compose/python.Dockerfile
+            build_args: ""
+          - service: enricher
+            dockerfile: deploy/compose/python.Dockerfile
+            build_args: ""
+          - service: graph-builder
+            dockerfile: deploy/compose/python.Dockerfile
+            build_args: ""
+          - service: llm-gateway
+            dockerfile: deploy/compose/python.Dockerfile
+            build_args: ""
+          - service: research-orchestrator
+            dockerfile: deploy/compose/python.Dockerfile
+            build_args: ""
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: false
+          tags: wre/${{ matrix.service }}:ci
+          build-args: ${{ matrix.build_args }}
+          cache-from: type=gha,scope=${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.dockerfile }}
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Go vulnerability scan
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4 && govulncheck ./...
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.8.6"
+          python-version: "3.12"
+      - name: Python dependency audit
+        working-directory: python
+        run: uv sync --frozen --all-packages && uv run pip-audit
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Filesystem vulnerability scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+          skip-dirs: python/.venv
+
+  integration:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Start the stack
+        run: docker compose up -d --build --wait
+      - name: Smoke test
+        run: ./scripts/smoke.sh
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail=300
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v --remove-orphans

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wre.dev/schemas/events/v1/payloads/document.gate.schema.json",
+  "title": "document.indexed / document.kg_updated payload",
+  "type": "object",
+  "required": ["gate", "gate_status", "chunks", "index_version"],
+  "additionalProperties": true,
+  "properties": {
+    "gate": {"type": "string", "enum": ["index", "kg"]},
+    "gate_status": {"type": "string", "enum": ["pending", "done", "failed", "skipped"]},
+    "chunks": {"type": "integer", "minimum": 0},
+    "index_version": {"type": "string", "minLength": 1}
+  }
+}

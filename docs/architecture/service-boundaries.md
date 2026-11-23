@@ -102,7 +102,7 @@ locks. Not horizontally sharded in Phase 1.
 
 ### 3.3 `fetcher` (Go)
 
-**Owns:** `fetch` schema (`http_cache`: conditional-request metadata only), object storage
+**Owns:** `fetcher` schema (`http_cache`: conditional-request metadata only), object storage
 bucket `raw/`.
 
 **Responsibilities**

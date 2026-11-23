@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wre.dev/schemas/events/v1/payloads/document.duplicate.schema.json",
+  "title": "document.duplicate payload",
+  "type": "object",
+  "required": ["duplicate_of", "method"],
+  "additionalProperties": true,
+  "properties": {
+    "duplicate_of": {"type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"},
+    "method": {"type": "string", "enum": ["exact", "simhash", "canonical"]},
+    "distance": {"type": "integer", "minimum": 0, "maximum": 64}
+  }
+}

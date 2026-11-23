@@ -1,0 +1,19 @@
+[project]
+name = "wre-graph-builder"
+version = "0.1.0"
+description = "Web Research Engine graph builder service"
+requires-python = ">=3.12"
+dependencies = ["wre-pipeline"]
+
+[project.scripts]
+wre-graph-builder = "wre_graph_builder.__main__:main"
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+wre-pipeline = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wre_graph_builder"]

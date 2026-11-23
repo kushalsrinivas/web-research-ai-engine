@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wre.dev/schemas/events/v1/payloads/document.fetched.schema.json",
+  "title": "document.fetched payload",
+  "type": "object",
+  "required": ["http_status", "content_type", "content_length", "redirects", "renderer_used", "elapsed_ms"],
+  "additionalProperties": true,
+  "properties": {
+    "http_status": {"type": "integer", "minimum": 100, "maximum": 599},
+    "content_type": {"type": "string", "minLength": 1},
+    "content_length": {"type": "integer", "minimum": 0},
+    "etag": {"type": ["string", "null"]},
+    "last_modified": {"type": ["string", "null"], "format": "date-time"},
+    "redirects": {"type": "integer", "minimum": 0},
+    "renderer_used": {"type": "boolean"},
+    "elapsed_ms": {"type": "integer", "minimum": 0}
+  }
+}

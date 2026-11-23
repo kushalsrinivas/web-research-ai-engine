@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wre.dev/schemas/events/v1/payloads/document.parsed.schema.json",
+  "title": "document.parsed payload",
+  "type": "object",
+  "required": [
+    "extractor",
+    "parser_version",
+    "word_count",
+    "language",
+    "canonical_url_changed",
+    "duplicate",
+    "simhash"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "extractor": {"type": "string", "minLength": 1},
+    "parser_version": {"type": "string", "minLength": 1},
+    "word_count": {"type": "integer", "minimum": 0},
+    "language": {"type": "string", "minLength": 2},
+    "canonical_url_changed": {"type": "boolean"},
+    "duplicate": {"type": "boolean"},
+    "simhash": {"type": "string", "pattern": "^0x[0-9a-f]{16}$"}
+  }
+}

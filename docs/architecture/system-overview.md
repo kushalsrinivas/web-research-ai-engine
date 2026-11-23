@@ -109,7 +109,7 @@ object storage (artifacts), Temporal (durable workflows).
 | PostgreSQL `search` | Chunks, embeddings, lexical index | Source of truth for document text |
 | PostgreSQL `graph` | Entities, claims, edges | Document bodies |
 | PostgreSQL `research` | Investigations, messages, citations, progress events | Full retrieved page text (referenced) |
-| Per-service schemas | `ingest` (frontier), `parse` (fingerprints), `fetch` (http cache), `ops` (leases), `api` (idempotency), `llm` (ledger, cache) | Anything another service reads directly |
+| Per-service schemas | `ingest` (frontier), `parse` (fingerprints), `fetcher` (http cache), `ops` (leases), `api` (idempotency), `llm` (ledger, cache) | Anything another service reads directly |
 | Object storage | Raw artifacts, parsed/normalized artifacts, extracted payloads | Anything queried by SQL |
 | Redpanda | Work-in-flight events, replayable history (7 days) | Long-term state |
 

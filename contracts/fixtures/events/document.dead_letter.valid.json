@@ -1,0 +1,30 @@
+{
+  "event_id": "01JB2Q8Z9K4T7V3M6R1N5C0X8Y",
+  "event_type": "document.dead_letter",
+  "schema_version": 1,
+  "occurred_at": "2026-11-22T10:00:08.000Z",
+  "producer": "parser@0.1.0+9f2c1ab",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "tenant_id": "public",
+  "attempt": 3,
+  "document": {
+    "document_id": "01JB2Q1H7S5D9F4K2M8N6P3R0T",
+    "revision": 1,
+    "state": "dead_lettered"
+  },
+  "payload": {
+    "original_topic": "doc.fetched",
+    "original_partition": 7,
+    "original_offset": 183422,
+    "stage": "parser",
+    "attempts": 3,
+    "error": {
+      "class": "permanent",
+      "code": "EMPTY_EXTRACTION",
+      "message": "no main content above threshold"
+    },
+    "processor_version": "parser@0.1.0+9f2c1ab",
+    "first_failed_at": "2026-11-22T10:00:00Z",
+    "dead_lettered_at": "2026-11-22T10:04:12Z"
+  }
+}

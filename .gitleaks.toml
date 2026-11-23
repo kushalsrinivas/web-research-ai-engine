@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Local-only placeholder credentials in the documented example env file."
+paths = ['''\.env\.example$''']

@@ -1,0 +1,21 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - contextcheck
+    - errcheck
+    - govet
+    - ineffassign
+    - sqlclosecheck
+    - staticcheck
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - bodyclose
+          - errcheck

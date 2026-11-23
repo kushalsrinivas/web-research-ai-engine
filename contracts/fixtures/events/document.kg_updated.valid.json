@@ -1,0 +1,21 @@
+{
+  "event_id": "01JB2Q8Z9K4T7V3M6R1N5C0X8V",
+  "event_type": "document.kg_updated",
+  "schema_version": 1,
+  "occurred_at": "2026-11-22T10:00:05.000Z",
+  "producer": "graph-builder@0.1.0+9f2c1ab",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "tenant_id": "public",
+  "attempt": 1,
+  "document": {
+    "document_id": "01JB2Q1H7S5D9F4K2M8N6P3R0T",
+    "revision": 1,
+    "state": "kg_updated"
+  },
+  "payload": {
+    "gate": "kg",
+    "gate_status": "done",
+    "chunks": 9,
+    "index_version": "graph-1"
+  }
+}
