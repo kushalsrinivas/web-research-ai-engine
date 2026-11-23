@@ -54,6 +54,14 @@ Rules:
 ### `scheduler`
 - URL canonicalization property tests: idempotent, fragment-insensitive, tracking params
   removed, no two distinct inputs collapse to one URL unless intentionally equivalent.
+- Source registry: create/update/disable/delete, candidate promotion, config-version
+  snapshots, and health transitions.
+- Discovery fixtures: feed autodiscovery, sitemap parsing, graph external-domain extraction,
+  provider replacement, and robots denial.
+- Adaptive scheduling: type/priority/reliability intervals, failure backoff, `Retry-After`,
+  and domain-policy concurrency/rate floors.
+- Quality scoring: eight dimensions in range, weighted composite, model/evaluation
+  provenance, and rejection of unknown dimensions.
 - Robots deny/allow/crawl-delay; cached robots respects TTL.
 - Per-host concurrency and rate limits never exceed config under 10k concurrent admissions.
 - A URL already known at the same revision is not re-enqueued.

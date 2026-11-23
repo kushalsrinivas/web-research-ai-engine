@@ -20,25 +20,31 @@ const (
 // Config is the process configuration. It contains no secrets beyond what the
 // environment already provides; callers must not log it.
 type Config struct {
-	Service         string
-	Env             string
-	Port            int
-	LogLevel        slog.Level
-	SampleRatio     float64
-	OTLPEndpoint    string
-	ShutdownTimeout time.Duration
+	Service           string
+	Env               string
+	Port              int
+	LogLevel          slog.Level
+	SampleRatio       float64
+	OTLPEndpoint      string
+	DatabaseURL       string
+	SourceUserAgent   string
+	DiscoveryProvider string
+	ShutdownTimeout   time.Duration
 }
 
 // Load reads and validates configuration. Required infrastructure settings are
 // enforced outside development so a misconfigured staging/prod pod fails fast.
 func Load(service string, defaultPort int) (Config, error) {
 	cfg := Config{
-		Service:         service,
-		Env:             env("APP_ENV", Development),
-		Port:            defaultPort,
-		LogLevel:        slog.LevelInfo,
-		OTLPEndpoint:    os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
-		ShutdownTimeout: 10 * time.Second,
+		Service:           service,
+		Env:               env("APP_ENV", Development),
+		Port:              defaultPort,
+		LogLevel:          slog.LevelInfo,
+		OTLPEndpoint:      os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		DatabaseURL:       os.Getenv("DATABASE_URL"),
+		SourceUserAgent:   env("SOURCE_USER_AGENT", "wre-source-registry/0.1 (+https://github.com/kushalsrinivas/web-research-ai-engine)"),
+		DiscoveryProvider: strings.ToLower(env("DISCOVERY_PROVIDER", "gdelt")),
+		ShutdownTimeout:   10 * time.Second,
 	}
 
 	switch cfg.Env {

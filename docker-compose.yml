@@ -16,6 +16,8 @@ x-app-env: &app-env
   OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
   OTEL_SERVICE_NAMESPACE: wre
   OTEL_SAMPLE_RATIO: ${OTEL_SAMPLE_RATIO:-}
+  DISCOVERY_PROVIDER: ${DISCOVERY_PROVIDER:-gdelt}
+  SOURCE_USER_AGENT: ${SOURCE_USER_AGENT:-wre-source-registry/0.1 (+https://github.com/kushalsrinivas/web-research-ai-engine)}
 
 x-go-build: &go-build
   context: .
@@ -384,6 +386,12 @@ services:
       - prometheus
       - loki
       - tempo
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 60s
     restart: unless-stopped
 
   redpanda-console:

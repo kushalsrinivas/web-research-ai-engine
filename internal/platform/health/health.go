@@ -22,8 +22,9 @@ type Check struct {
 }
 
 // New builds the probe router. checks may be empty while a service has no
-// dependencies wired yet.
-func New(service, processorVersion string, checks []Check, registry *prometheus.Registry, logger *slog.Logger) http.Handler {
+// dependencies wired yet. Callers may mount service routes on the returned
+// router before serving it.
+func New(service, processorVersion string, checks []Check, registry *prometheus.Registry, logger *slog.Logger) *chi.Mux {
 	if registry == nil {
 		registry = prometheus.NewRegistry()
 	}

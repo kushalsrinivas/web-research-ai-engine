@@ -48,7 +48,7 @@ for entry in $SERVICES; do
 done
 
 wait_http "prometheus" "$BASE:9090/-/healthy"
-wait_http "grafana" "$BASE:3000/api/health"
+wait_http "grafana" "$BASE:3000/api/health" 600
 wait_http "loki" "$BASE:3100/ready"
 wait_http "tempo" "$BASE:3200/ready"
 wait_http "object store" "$BASE:9000/minio/health/live"
@@ -97,5 +97,7 @@ curl -fsS -H "traceparent: 00-${parser_trace}-00f067aa0ba902b8-01" "$BASE:8085/h
 wait_http "tempo api trace" "$BASE:3200/api/traces/$api_trace"
 wait_http "tempo parser trace" "$BASE:3200/api/traces/$parser_trace"
 wait_loki_trace "$api_trace"
+
+python3 "$(dirname "$0")/smoke_sources.py"
 
 echo "smoke: ok"

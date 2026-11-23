@@ -100,6 +100,18 @@ Prefix `wre_`. Labels in `{}` are the only allowed labels.
 | `wre_investigation_cost_usd` | histogram | — |
 | `wre_citation_validation_failures_total` | counter | `reason` |
 
+### Sources
+
+| Metric | Type | Labels |
+|---|---|---|
+| `wre_sources_total` | gauge | `source_type`, `status` |
+| `wre_sources_due` | gauge | — |
+| `wre_source_health_total` | gauge | `state` |
+| `wre_source_reliability_avg` | gauge | `source_type` |
+| `wre_source_discoveries_total` | counter | `mechanism`, `outcome` |
+| `wre_source_crawl_outcomes_total` | counter | `status` |
+| `wre_source_scores_total` | counter | `model_version` |
+
 Cardinality guardrails: no label may take more than 200 distinct values; `host` is hashed into
 buckets; errors carry `code`, not message. CI checks the metric registry for label growth.
 
@@ -161,6 +173,8 @@ breaches are treated as incidents regardless of budget.
    rebuild backlog.
 7. **Infrastructure** — Postgres connections/locks/replication lag, broker disk/ISR, object
    store error rate, Temporal task backlog.
+8. **Source registry** — sources by type/status, due count, health states, crawl outcomes,
+   discovery runs, and reliability by source type.
 
 ## 7. Alerts
 

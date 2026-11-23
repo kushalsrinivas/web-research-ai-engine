@@ -44,7 +44,7 @@ are added in later phases.
 | Service | Language | Health port | Plane |
 |---|---|---|---|
 | `api` | Go | 8080 | edge |
-| `scheduler` | Go | 8081 | ingestion |
+| `scheduler` | Go | 8081 | ingestion / source registry |
 | `fetcher` | Go | 8082 | ingestion |
 | `indexer` | Go | 8083 | ingestion |
 | `reconciler` | Go | 8084 | ops |
@@ -53,6 +53,20 @@ are added in later phases.
 | `graph-builder` | Python | 8087 | intelligence |
 | `llm-gateway` | Python | 8088 | intelligence |
 | `research-orchestrator` | Python | 8089 | research |
+
+## Source registry
+
+Phase 2 lives in `scheduler` under `/internal/v1`:
+
+- Source CRUD, promotion, health, configuration versions.
+- Seed, topic, and graph discovery; topic providers are replaceable (`DISCOVERY_PROVIDER`).
+- Eight-dimension quality scoring with model version and evaluation timestamp.
+- Adaptive scheduling with priority, reliability, domain floors, exponential backoff, and
+  `Retry-After`.
+- Per-domain concurrency/rate/robots policies.
+- A provisioned Grafana `Source Registry` dashboard and aggregate Prometheus metrics.
+
+See `docs/engineering/source-registry.md` for the schema, API, and scheduling rules.
 
 ## Repository layout
 
@@ -64,6 +78,7 @@ contracts/events/v1/    versioned JSON Schemas for the event envelope and payloa
 contracts/fixtures/     fixtures shared by Go and Python contract tests
 python/packages/wre_pipeline/   shared Python runtime
 python/services/               Python deployables (one package per service)
+internal/sources/              source registry, discovery, scoring, scheduling API
 sql/migrations/                numbered, forward-only SQL
 deploy/compose/                Dockerfiles, Prometheus, Loki, Promtail, Tempo, OTel, Grafana
 scripts/                       migration runner and smoke checks
@@ -135,11 +150,12 @@ pulls GHCR images and runs `docker compose up`; the `migrate` service applies pe
 migrations before application containers start. Required repository variables and secrets
 are listed in `docs/engineering/environments.md`.
 
-## Deliberate Phase 1 gaps
+## Deliberate Phase 1–2 gaps
 
-- Service mains are health/telemetry skeletons; business logic starts in Phase 2.
+- The non-scheduler service mains are still health/telemetry skeletons; the scheduler now
+  owns the Phase 2 source registry and discovery API.
 - No Kubernetes manifests; the brief explicitly requires containers first.
-- No dashboard JSON yet; datasources and Explore are provisioned.
+- Only the Source Registry dashboard is provisioned; broader operational dashboards follow.
 - OpenSearch, Qdrant, Neo4j, and Redis are omitted per the ADRs. Reintroduce only through
   their revisit triggers or a new ADR.
 - A headless-browser fetcher sidecar is deferred until fetch/render logic exists.
