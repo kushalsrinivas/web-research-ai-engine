@@ -3,7 +3,22 @@
 set -euo pipefail
 
 BASE="${BASE:-http://127.0.0.1}"
-SERVICES="api:8080 scheduler:8081 fetcher:8082 indexer:8083 reconciler:8084 parser:8085 enricher:8086 graph-builder:8087 llm-gateway:8088 research-orchestrator:8089"
+API_PORT="${API_HOST_PORT:-8080}"
+SCHEDULER_PORT="${SCHEDULER_HOST_PORT:-8081}"
+FETCHER_PORT="${FETCHER_HOST_PORT:-8082}"
+INDEXER_PORT="${INDEXER_HOST_PORT:-8083}"
+RECONCILER_PORT="${RECONCILER_HOST_PORT:-8084}"
+PARSER_PORT="${PARSER_HOST_PORT:-8085}"
+ENRICHER_PORT="${ENRICHER_HOST_PORT:-8086}"
+GRAPH_BUILDER_PORT="${GRAPH_BUILDER_HOST_PORT:-8087}"
+LLM_GATEWAY_PORT="${LLM_GATEWAY_HOST_PORT:-8088}"
+RESEARCH_ORCHESTRATOR_PORT="${RESEARCH_ORCHESTRATOR_HOST_PORT:-8089}"
+PROMETHEUS_PORT="${PROMETHEUS_PORT:-9090}"
+GRAFANA_PORT="${GRAFANA_PORT:-3000}"
+LOKI_PORT="${LOKI_PORT:-3100}"
+TEMPO_PORT="${TEMPO_PORT:-3200}"
+S3_PORT="${S3_PORT:-9000}"
+SERVICES="api:$API_PORT scheduler:$SCHEDULER_PORT fetcher:$FETCHER_PORT indexer:$INDEXER_PORT reconciler:$RECONCILER_PORT parser:$PARSER_PORT enricher:$ENRICHER_PORT graph-builder:$GRAPH_BUILDER_PORT llm-gateway:$LLM_GATEWAY_PORT research-orchestrator:$RESEARCH_ORCHESTRATOR_PORT"
 
 wait_http() {
   local name="$1" url="$2" attempts="${3:-60}" i=0
@@ -25,7 +40,7 @@ wait_loki_trace() {
   local start_ns=$((($(date +%s) - 600) * 1000000000))
   local end_ns=$(($(date +%s) * 1000000000))
   while [ "$i" -lt "$attempts" ]; do
-    if curl -fsS --max-time 3 -G "$BASE:3100/loki/api/v1/query_range" \
+    if curl -fsS --max-time 3 -G "$BASE:$LOKI_PORT/loki/api/v1/query_range" \
       --data-urlencode "query=$query" \
       --data-urlencode "start=$start_ns" \
       --data-urlencode "end=$end_ns" \
@@ -47,11 +62,11 @@ for entry in $SERVICES; do
   wait_http "$name /readyz" "$BASE:$port/readyz"
 done
 
-wait_http "prometheus" "$BASE:9090/-/healthy"
-wait_http "grafana" "$BASE:3000/api/health" 600
-wait_http "loki" "$BASE:3100/ready"
-wait_http "tempo" "$BASE:3200/ready"
-wait_http "object store" "$BASE:9000/minio/health/live"
+wait_http "prometheus" "$BASE:$PROMETHEUS_PORT/-/healthy"
+wait_http "grafana" "$BASE:$GRAFANA_PORT/api/health" 600
+wait_http "loki" "$BASE:$LOKI_PORT/ready"
+wait_http "tempo" "$BASE:$TEMPO_PORT/ready"
+wait_http "object store" "$BASE:$S3_PORT/minio/health/live"
 
 redpanda_ready=0
 i=0
@@ -91,13 +106,14 @@ echo "ok: core schema ($core_tables tables)"
 # and have its trace id in Loki logs.
 api_trace=$(uuidgen | tr -d '-' | tr '[:upper:]' '[:lower:]')
 parser_trace=$(uuidgen | tr -d '-' | tr '[:upper:]' '[:lower:]')
-curl -fsS -H "traceparent: 00-${api_trace}-00f067aa0ba902b7-01" "$BASE:8080/healthz" >/dev/null
-curl -fsS -H "traceparent: 00-${parser_trace}-00f067aa0ba902b8-01" "$BASE:8085/healthz" >/dev/null
+curl -fsS -H "traceparent: 00-${api_trace}-00f067aa0ba902b7-01" "$BASE:$API_PORT/healthz" >/dev/null
+curl -fsS -H "traceparent: 00-${parser_trace}-00f067aa0ba902b8-01" "$BASE:$PARSER_PORT/healthz" >/dev/null
 
-wait_http "tempo api trace" "$BASE:3200/api/traces/$api_trace"
-wait_http "tempo parser trace" "$BASE:3200/api/traces/$parser_trace"
+wait_http "tempo api trace" "$BASE:$TEMPO_PORT/api/traces/$api_trace"
+wait_http "tempo parser trace" "$BASE:$TEMPO_PORT/api/traces/$parser_trace"
 wait_loki_trace "$api_trace"
 
-python3 "$(dirname "$0")/smoke_sources.py"
+SCHEDULER_URL="$BASE:$SCHEDULER_PORT" python3 "$(dirname "$0")/smoke_sources.py"
+SCHEDULER_URL="$BASE:$SCHEDULER_PORT" python3 "$(dirname "$0")/smoke_crawl.py"
 
 echo "smoke: ok"
