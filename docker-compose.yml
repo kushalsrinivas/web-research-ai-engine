@@ -41,10 +41,10 @@ x-go-healthcheck: &go-healthcheck
   start_period: 5s
 
 x-python-healthcheck: &python-healthcheck
-  interval: 5s
-  timeout: 3s
-  retries: 12
-  start_period: 5s
+  interval: 10s
+  timeout: 10s
+  retries: 30
+  start_period: 10s
 
 services:
   postgres:
@@ -123,7 +123,7 @@ services:
       - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
       - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
     ports:
-      - "127.0.0.1:19092:19092"
+      - "127.0.0.1:${REDPANDA_HOST_PORT:-19092}:19092"
     volumes:
       - redpanda-data:/var/lib/redpanda/data
     healthcheck:
@@ -166,7 +166,7 @@ services:
       <<: *app-env
       PORT: "8080"
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${API_HOST_PORT:-8080}:8080"
     depends_on: *app-depends
     healthcheck: *go-healthcheck
     restart: unless-stopped
@@ -182,7 +182,7 @@ services:
       <<: *app-env
       PORT: "8081"
     ports:
-      - "127.0.0.1:8081:8081"
+      - "127.0.0.1:${SCHEDULER_HOST_PORT:-8081}:8081"
     depends_on: *app-depends
     healthcheck: *go-healthcheck
     restart: unless-stopped
@@ -199,8 +199,12 @@ services:
       PORT: "8082"
       FETCHER_MAX_CONCURRENCY: ${FETCHER_MAX_CONCURRENCY:-20}
       FETCHER_TIMEOUT_SECONDS: ${FETCHER_TIMEOUT_SECONDS:-30}
+      CRAWLER_MAX_DEPTH: ${CRAWLER_MAX_DEPTH:-2}
+      CRAWLER_MAX_BODY_MB: ${CRAWLER_MAX_BODY_MB:-10}
+      CRAWLER_ALLOW_PRIVATE: ${CRAWLER_ALLOW_PRIVATE:-}
+      CRAWLER_USER_AGENT: ${CRAWLER_USER_AGENT:-wre-crawler/0.1 (+https://github.com/kushalsrinivas/web-research-ai-engine)}
     ports:
-      - "127.0.0.1:8082:8082"
+      - "127.0.0.1:${FETCHER_HOST_PORT:-8082}:8082"
     depends_on: *app-depends
     healthcheck: *go-healthcheck
     restart: unless-stopped
@@ -216,7 +220,7 @@ services:
       <<: *app-env
       PORT: "8083"
     ports:
-      - "127.0.0.1:8083:8083"
+      - "127.0.0.1:${INDEXER_HOST_PORT:-8083}:8083"
     depends_on: *app-depends
     healthcheck: *go-healthcheck
     restart: unless-stopped
@@ -232,7 +236,7 @@ services:
       <<: *app-env
       PORT: "8084"
     ports:
-      - "127.0.0.1:8084:8084"
+      - "127.0.0.1:${RECONCILER_HOST_PORT:-8084}:8084"
     depends_on: *app-depends
     healthcheck: *go-healthcheck
     restart: unless-stopped
@@ -245,7 +249,7 @@ services:
       <<: *app-env
       PORT: "8085"
     ports:
-      - "127.0.0.1:8085:8085"
+      - "127.0.0.1:${PARSER_HOST_PORT:-8085}:8085"
     depends_on: *app-depends
     healthcheck:
       <<: *python-healthcheck
@@ -260,7 +264,7 @@ services:
       <<: *app-env
       PORT: "8086"
     ports:
-      - "127.0.0.1:8086:8086"
+      - "127.0.0.1:${ENRICHER_HOST_PORT:-8086}:8086"
     depends_on: *app-depends
     healthcheck:
       <<: *python-healthcheck
@@ -275,7 +279,7 @@ services:
       <<: *app-env
       PORT: "8087"
     ports:
-      - "127.0.0.1:8087:8087"
+      - "127.0.0.1:${GRAPH_BUILDER_HOST_PORT:-8087}:8087"
     depends_on: *app-depends
     healthcheck:
       <<: *python-healthcheck
@@ -293,7 +297,7 @@ services:
       LLM_MODEL: ${LLM_MODEL:-stub}
       LLM_API_KEY: ${LLM_API_KEY:-}
     ports:
-      - "127.0.0.1:8088:8088"
+      - "127.0.0.1:${LLM_GATEWAY_HOST_PORT:-8088}:8088"
     depends_on: *app-depends
     healthcheck:
       <<: *python-healthcheck
@@ -308,7 +312,7 @@ services:
       <<: *app-env
       PORT: "8089"
     ports:
-      - "127.0.0.1:8089:8089"
+      - "127.0.0.1:${RESEARCH_ORCHESTRATOR_HOST_PORT:-8089}:8089"
     depends_on: *app-depends
     healthcheck:
       <<: *python-healthcheck
@@ -321,8 +325,8 @@ services:
     volumes:
       - ./deploy/compose/otel/config.yaml:/etc/otelcol/config.yaml:ro
     ports:
-      - "127.0.0.1:4317:4317"
-      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:${OTEL_GRPC_PORT:-4317}:4317"
+      - "127.0.0.1:${OTEL_HTTP_PORT:-4318}:4318"
     depends_on:
       - tempo
     restart: unless-stopped

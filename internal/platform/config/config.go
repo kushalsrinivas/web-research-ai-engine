@@ -20,31 +20,61 @@ const (
 // Config is the process configuration. It contains no secrets beyond what the
 // environment already provides; callers must not log it.
 type Config struct {
-	Service           string
-	Env               string
-	Port              int
-	LogLevel          slog.Level
-	SampleRatio       float64
-	OTLPEndpoint      string
-	DatabaseURL       string
-	SourceUserAgent   string
-	DiscoveryProvider string
-	ShutdownTimeout   time.Duration
+	Service               string
+	Env                   string
+	Port                  int
+	LogLevel              slog.Level
+	SampleRatio           float64
+	OTLPEndpoint          string
+	DatabaseURL           string
+	SourceUserAgent       string
+	DiscoveryProvider     string
+	KafkaBrokers          []string
+	S3Endpoint            string
+	S3AccessKey           string
+	S3SecretKey           string
+	S3BucketRaw           string
+	S3Region              string
+	SchedulerURL          string
+	CrawlerUserAgent      string
+	CrawlerAllowPrivate   bool
+	CrawlerMaxDepth       int
+	CrawlerMaxBodyBytes   int64
+	FetcherMaxConcurrency int
+	FetcherTimeout        time.Duration
+	ShutdownTimeout       time.Duration
 }
 
 // Load reads and validates configuration. Required infrastructure settings are
 // enforced outside development so a misconfigured staging/prod pod fails fast.
 func Load(service string, defaultPort int) (Config, error) {
 	cfg := Config{
-		Service:           service,
-		Env:               env("APP_ENV", Development),
-		Port:              defaultPort,
-		LogLevel:          slog.LevelInfo,
-		OTLPEndpoint:      os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
-		DatabaseURL:       os.Getenv("DATABASE_URL"),
-		SourceUserAgent:   env("SOURCE_USER_AGENT", "wre-source-registry/0.1 (+https://github.com/kushalsrinivas/web-research-ai-engine)"),
-		DiscoveryProvider: strings.ToLower(env("DISCOVERY_PROVIDER", "gdelt")),
-		ShutdownTimeout:   10 * time.Second,
+		Service:               service,
+		Env:                   env("APP_ENV", Development),
+		Port:                  defaultPort,
+		LogLevel:              slog.LevelInfo,
+		OTLPEndpoint:          os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		DatabaseURL:           os.Getenv("DATABASE_URL"),
+		SourceUserAgent:       env("SOURCE_USER_AGENT", "wre-source-registry/0.1 (+https://github.com/kushalsrinivas/web-research-ai-engine)"),
+		DiscoveryProvider:     strings.ToLower(env("DISCOVERY_PROVIDER", "gdelt")),
+		S3Endpoint:            os.Getenv("S3_ENDPOINT"),
+		S3AccessKey:           os.Getenv("S3_ACCESS_KEY"),
+		S3SecretKey:           os.Getenv("S3_SECRET_KEY"),
+		S3BucketRaw:           env("S3_BUCKET_RAW", "wre-raw"),
+		S3Region:              env("S3_REGION", "us-east-1"),
+		SchedulerURL:          env("SCHEDULER_URL", "http://scheduler:8081"),
+		CrawlerUserAgent:      env("CRAWLER_USER_AGENT", env("SOURCE_USER_AGENT", "wre-crawler/0.1 (+https://github.com/kushalsrinivas/web-research-ai-engine)")),
+		CrawlerAllowPrivate:   false,
+		CrawlerMaxDepth:       2,
+		CrawlerMaxBodyBytes:   10 << 20,
+		FetcherMaxConcurrency: 20,
+		FetcherTimeout:        30 * time.Second,
+		ShutdownTimeout:       10 * time.Second,
+	}
+	for _, broker := range strings.Split(os.Getenv("KAFKA_BROKERS"), ",") {
+		if broker = strings.TrimSpace(broker); broker != "" {
+			cfg.KafkaBrokers = append(cfg.KafkaBrokers, broker)
+		}
 	}
 
 	switch cfg.Env {
@@ -84,6 +114,44 @@ func Load(service string, defaultPort int) (Config, error) {
 			return Config{}, fmt.Errorf("OTEL_SAMPLE_RATIO must be in 0..1, got %q", raw)
 		}
 		cfg.SampleRatio = ratio
+	}
+
+	if raw := os.Getenv("FETCHER_MAX_CONCURRENCY"); raw != "" {
+		concurrency, err := strconv.Atoi(raw)
+		if err != nil || concurrency < 1 || concurrency > 500 {
+			return Config{}, fmt.Errorf("FETCHER_MAX_CONCURRENCY must be in 1..500, got %q", raw)
+		}
+		cfg.FetcherMaxConcurrency = concurrency
+	}
+	if raw := os.Getenv("FETCHER_TIMEOUT_SECONDS"); raw != "" {
+		seconds, err := strconv.Atoi(raw)
+		if err != nil || seconds < 1 || seconds > 300 {
+			return Config{}, fmt.Errorf("FETCHER_TIMEOUT_SECONDS must be in 1..300, got %q", raw)
+		}
+		cfg.FetcherTimeout = time.Duration(seconds) * time.Second
+	}
+
+	cfg.CrawlerAllowPrivate = cfg.Env == Development
+	if raw := strings.TrimSpace(os.Getenv("CRAWLER_ALLOW_PRIVATE")); raw != "" {
+		allow, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("CRAWLER_ALLOW_PRIVATE must be true or false, got %q", raw)
+		}
+		cfg.CrawlerAllowPrivate = allow
+	}
+	if raw := os.Getenv("CRAWLER_MAX_DEPTH"); raw != "" {
+		depth, err := strconv.Atoi(raw)
+		if err != nil || depth < 0 || depth > 10 {
+			return Config{}, fmt.Errorf("CRAWLER_MAX_DEPTH must be in 0..10, got %q", raw)
+		}
+		cfg.CrawlerMaxDepth = depth
+	}
+	if raw := os.Getenv("CRAWLER_MAX_BODY_MB"); raw != "" {
+		megabytes, err := strconv.Atoi(raw)
+		if err != nil || megabytes < 1 || megabytes > 100 {
+			return Config{}, fmt.Errorf("CRAWLER_MAX_BODY_MB must be in 1..100, got %q", raw)
+		}
+		cfg.CrawlerMaxBodyBytes = int64(megabytes) << 20
 	}
 
 	if cfg.Env == Staging || cfg.Env == Production {

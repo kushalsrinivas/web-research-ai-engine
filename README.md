@@ -1,8 +1,8 @@
 # Web Research Engine
 
-A provenance-first web research platform. Phase 1 is the repository, development
-environment, and infrastructure foundation described in `docs/architecture/` and the
-Phase 1 brief.
+A provenance-first web research platform. Phase 1 built the repository, development
+environment, and infrastructure foundation. Phase 2 added the source registry and
+adaptive scheduling. Phase 3 adds the distributed crawler.
 
 The service inventory and storage choices follow the accepted Phase 0 architecture. In
 particular, OpenSearch, Qdrant, Redis, and Neo4j are **not** in this stack: ADR-0005,
@@ -35,6 +35,18 @@ Web entry points (all bound to `127.0.0.1`):
 If a local PostgreSQL already owns port 5432, set `POSTGRES_PORT` to a free host port
 (for example `55433`) in `.env`; the containers still use 5432 internally.
 
+To run beside another Docker stack, use the alternate host-port profile:
+
+```bash
+make alt-dev
+make alt-smoke
+make alt-down
+```
+
+That maps the API to `28080`, scheduler to `28081`, Grafana to `23000`, Prometheus to
+`29090`, and the other services/datastores to the `2xxxx`/`3xxxx` ranges listed in
+`deploy/compose/alt-ports.env`. Container-to-container ports are unchanged.
+
 ## Services
 
 Every service has `/healthz` (liveness), `/readyz` (dependency readiness), and `/metrics`
@@ -45,7 +57,7 @@ are added in later phases.
 |---|---|---|---|
 | `api` | Go | 8080 | edge |
 | `scheduler` | Go | 8081 | ingestion / source registry |
-| `fetcher` | Go | 8082 | ingestion |
+| `fetcher` | Go | 8082 | ingestion / crawler workers |
 | `indexer` | Go | 8083 | ingestion |
 | `reconciler` | Go | 8084 | ops |
 | `parser` | Python | 8085 | ingestion |
@@ -68,6 +80,26 @@ Phase 2 lives in `scheduler` under `/internal/v1`:
 
 See `docs/engineering/source-registry.md` for the schema, API, and scheduling rules.
 
+## Crawler
+
+Phase 3 runs inside `scheduler` (frontier + Kafka producer) and `fetcher` (consumer
+group workers). Every crawl is durable in Postgres, raw bytes go to S3 under a
+content-hash prefix, and links are followed to `CRAWLER_MAX_DEPTH` on the same host.
+Robots.txt, per-domain concurrency/rate limits, conditional requests, and the SSRF
+guard are enforced before every fetch.
+
+```bash
+# manual crawl (scheduler API)
+curl -s -X POST http://127.0.0.1:8081/internal/v1/crawl/jobs \
+  -H 'Content-Type: application/json' -d '{"url":"https://example.com/news"}'
+
+# queue counters and archived jobs
+curl -s http://127.0.0.1:8081/internal/v1/crawl/stats
+```
+
+`make smoke` enqueues one URL and requires the archived artifact URI. See
+`docs/engineering/crawler.md` for job states, security rules, and configuration.
+
 ## Repository layout
 
 ```
@@ -79,6 +111,8 @@ contracts/fixtures/     fixtures shared by Go and Python contract tests
 python/packages/wre_pipeline/   shared Python runtime
 python/services/               Python deployables (one package per service)
 internal/sources/              source registry, discovery, scoring, scheduling API
+internal/crawler/              frontier dispatch, workers, fetch, robots, archive, extraction
+internal/crawlcontract/        Kafka wire contract between scheduler and fetcher
 sql/migrations/                numbered, forward-only SQL
 deploy/compose/                Dockerfiles, Prometheus, Loki, Promtail, Tempo, OTel, Grafana
 scripts/                       migration runner and smoke checks
