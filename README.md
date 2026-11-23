@@ -2,7 +2,8 @@
 
 A provenance-first web research platform. Phase 1 built the repository, development
 environment, and infrastructure foundation. Phase 2 added the source registry and
-adaptive scheduling. Phase 3 adds the distributed crawler.
+adaptive scheduling. Phase 3 adds the distributed crawler. Phase 4 adds the ETL and
+document-processing pipeline.
 
 The service inventory and storage choices follow the accepted Phase 0 architecture. In
 particular, OpenSearch, Qdrant, Redis, and Neo4j are **not** in this stack: ADR-0005,
@@ -100,6 +101,27 @@ curl -s http://127.0.0.1:8081/internal/v1/crawl/stats
 `make smoke` enqueues one URL and requires the archived artifact URI. See
 `docs/engineering/crawler.md` for job states, security rules, and configuration.
 
+## ETL and canonical documents
+
+`parser` turns archived raw bytes into versioned canonical documents. HTML, PDF, DOCX,
+XML, JSON, RSS/Atom, and plain text are supported. Every output carries extraction
+warnings, separate quality dimensions, and a processing version. Raw artifacts are never
+modified; derived outputs are keyed by processing version.
+
+```bash
+# ETL status and outputs
+curl -s http://127.0.0.1:8085/internal/v1/etl/stats
+curl -s http://127.0.0.1:8085/internal/v1/etl/documents/<document_id>
+
+# selective reprocessing/backfill
+curl -s -X POST http://127.0.0.1:8085/internal/v1/etl/reprocess \
+  -H 'Content-Type: application/json' \
+  -d '{"mode":"reparse","source_id":"<uuid>","reason":"parser upgrade"}'
+```
+
+Invalid documents are quarantined with `failed_stage = etl.*`, never promoted. See
+`docs/engineering/etl.md`.
+
 ## Repository layout
 
 ```
@@ -113,6 +135,8 @@ python/services/               Python deployables (one package per service)
 internal/sources/              source registry, discovery, scoring, scheduling API
 internal/crawler/              frontier dispatch, workers, fetch, robots, archive, extraction
 internal/crawlcontract/        Kafka wire contract between scheduler and fetcher
+python/services/parser/        ETL extraction, normalization, quality, reprocessing API
+contracts/documents/v1/        canonical document JSON Schema
 sql/migrations/                numbered, forward-only SQL
 deploy/compose/                Dockerfiles, Prometheus, Loki, Promtail, Tempo, OTel, Grafana
 scripts/                       migration runner and smoke checks

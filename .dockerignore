@@ -5,7 +5,6 @@
 !.env.example
 docs
 tests
-contracts
 deploy
 infrastructure
 **/__pycache__
