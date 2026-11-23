@@ -58,11 +58,12 @@ the system.
 
 ## 4. Fetcher policy (SSRF and content safety)
 
-The fetcher — and the scheduler, but only for `robots.txt` — are the only components with open
-**web** egress. All other egress goes to named endpoints (object storage, broker, database,
-Temporal, model providers). The fetcher and the scheduler's robots path share one URL admission
-library, so a policy fix cannot land in one and be missed in the other. The fetcher is the
-hostile-input-facing component; the scheduler's robots path is treated as equally untrusted.
+The fetcher and the scheduler (for `robots.txt` and source discovery) are the only
+components with open **web** egress. All other egress goes to named endpoints (object
+storage, broker, database, Temporal, model providers). The fetcher and the scheduler share
+one URL admission policy, so a policy fix cannot land in one and be missed in the other.
+The fetcher is the hostile-input-facing component; the scheduler's robots and discovery
+paths are treated as equally untrusted.
 
 URL admission (checked twice: `scheduler` and `fetcher`):
 

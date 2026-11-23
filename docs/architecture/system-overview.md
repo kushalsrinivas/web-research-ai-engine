@@ -88,7 +88,7 @@ public entry point. `reconciler` is the only component allowed to republish work
 | Service | Language | Plane | Owns |
 |---|---|---|---|
 | `api` | Go | edge | Public REST + SSE, auth, rate limits, search queries |
-| `scheduler` | Go | ingestion | Frontier, politeness, robots cache, priority lanes |
+| `scheduler` | Go | ingestion | Source registry/discovery, adaptive schedules, frontier, politeness, robots cache, priority lanes |
 | `fetcher` | Go | ingestion | HTTP/Render fetch, robots enforcement, raw artifact write |
 | `parser` | Python | ingestion | Extraction, normalization, fingerprinting, dedupe decision |
 | `indexer` | Go | ingestion | Chunk + embedding index, index idempotency |
@@ -109,7 +109,7 @@ object storage (artifacts), Temporal (durable workflows).
 | PostgreSQL `search` | Chunks, embeddings, lexical index | Source of truth for document text |
 | PostgreSQL `graph` | Entities, claims, edges | Document bodies |
 | PostgreSQL `research` | Investigations, messages, citations, progress events | Full retrieved page text (referenced) |
-| Per-service schemas | `ingest` (frontier), `parse` (fingerprints), `fetcher` (http cache), `ops` (leases), `api` (idempotency), `llm` (ledger, cache) | Anything another service reads directly |
+| Per-service schemas | `ingest` (sources, discovery, health, frontier), `parse` (fingerprints), `fetcher` (http cache), `ops` (leases), `api` (idempotency), `llm` (ledger, cache) | Anything another service reads directly |
 | Object storage | Raw artifacts, parsed/normalized artifacts, extracted payloads | Anything queried by SQL |
 | Redpanda | Work-in-flight events, replayable history (7 days) | Long-term state |
 

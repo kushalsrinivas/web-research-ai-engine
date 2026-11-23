@@ -42,6 +42,8 @@ Service-specific values:
 | `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | ingestion services | `http://silo:9000`, dev credentials |
 | `S3_BUCKET_RAW`, `S3_BUCKET_PARSED`, `S3_BUCKET_ENRICHED` | ingestion services | `wre-raw`, `wre-parsed`, `wre-enriched` |
 | `FETCHER_MAX_CONCURRENCY`, `FETCHER_TIMEOUT_SECONDS` | fetcher | `20`, `30` |
+| `DISCOVERY_PROVIDER` | scheduler source discovery | `gdelt`; `none` disables topic discovery |
+| `SOURCE_USER_AGENT` | scheduler discovery egress | `wre-source-registry/0.1 (...)` |
 | `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY` | llm-gateway only | `stub`, `stub`, empty |
 | `POSTGRES_PORT` | compose host mapping | `5432`; change if a local PostgreSQL owns it |
 
@@ -99,7 +101,18 @@ the images, runs migrations to completion, then starts the services and waits fo
 health checks. The workflow also exports `VERSION` as the Git SHA so runtime processor
 versions match the image build.
 
-## 6. Exit criteria mapping
+## 6. Phase 2 source-registry checks
+
+| Phase 2 criterion | Where it is satisfied |
+|---|---|
+| Sources registered, disabled, updated, removed | `/internal/v1/sources` CRUD in `scheduler`; `make smoke` source check |
+| Discovery adds candidates | Seed/topic/graph discovery, candidate status, PATCH promotion |
+| Quality metadata persisted | `ingest.source_scores` with dimensions, model version, evaluation time |
+| Scheduling is adaptive | Type/priority/reliability intervals, failure backoff, Retry-After, `/sources/due` |
+| Per-domain policies enforced | `ingest.source_domain_policies`, due concurrency cap, discovery deny/robots checks |
+| Source health visible | `/sources/health`, `/sources/{id}/history`, Source Registry Grafana dashboard |
+
+## 7. Phase 1 exit criteria mapping
 
 | Phase 1 criterion | Where it is satisfied |
 |---|---|

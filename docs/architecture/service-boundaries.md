@@ -82,10 +82,16 @@ command). It does not talk to Redpanda directly.
 
 ### 3.2 `scheduler` (Go)
 
-**Owns:** `ingest` schema (`frontier`, `robots_cache`, `host_state`, `fetch_jobs`).
+**Owns:** `ingest` schema (`sources`, source health/history/scores/policies, `frontier`, `robots_cache`, `host_state`, `fetch_jobs`).
 
 **Responsibilities**
 
+- Maintain the source registry: source CRUD, discovery candidates, quality evaluations,
+  configuration versions, and per-domain policies.
+- Run seed, topic, and graph discovery; keep discovery providers replaceable.
+- Compute adaptive `next_crawl_at` from source type, priority, reliability, domain policy,
+  failures, and `Retry-After`.
+- Expose due sources and accept crawl outcomes for health and scheduling.
 - Maintain the crawl frontier: URL admission, dedupe against `core` by `url_hash`,
   recrawl policy, per-host concurrency and rate limits.
 - Fetch and cache `robots.txt`; enforce `Crawl-delay` and disallow rules.
@@ -93,7 +99,9 @@ command). It does not talk to Redpanda directly.
   host so per-domain ordering is preserved.
 - Enforce global and per-tenant admission (max URLs per investigation, max in-flight).
 
-**Does not:** perform HTTP fetches, parse, or write document content.
+**Does not:** perform document fetches, parse, or write document content. Discovery and
+`robots.txt` requests use the same guarded egress policy as the fetcher but never archive
+content.
 
 **Scaling unit:** 2+ replicas; leader election for frontier leasing via Postgres advisory
 locks. Not horizontally sharded in Phase 1.
