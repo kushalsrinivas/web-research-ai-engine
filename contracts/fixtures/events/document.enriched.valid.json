@@ -1,0 +1,35 @@
+{
+  "event_id": "01JB2Q8Z9K4T7V3M6R1N5C0X8S",
+  "event_type": "document.enriched",
+  "schema_version": 1,
+  "occurred_at": "2026-11-22T10:00:03.000Z",
+  "producer": "enricher@0.1.0+9f2c1ab",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "tenant_id": "public",
+  "attempt": 1,
+  "document": {
+    "document_id": "01JB2Q1H7S5D9F4K2M8N6P3R0T",
+    "revision": 1,
+    "state": "enriched"
+  },
+  "artifacts": [
+    {
+      "kind": "enriched",
+      "uri": "s3://wre-enriched/public/01JB2Q1H7S5D9F4K2M8N6P3R0T/1/enrich-2026-11.json.zst",
+      "sha256": "3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a",
+      "bytes": 182344,
+      "codec": "zstd"
+    }
+  ],
+  "payload": {
+    "enrichment_version": "enrich-2026-11",
+    "summary_chars": 420,
+    "chunk_count": 9,
+    "entity_count": 14,
+    "claim_count": 6,
+    "embedding_model": "bge-m3",
+    "embedding_dim": 1024,
+    "token_cost": 0.0121,
+    "degraded": false
+  }
+}

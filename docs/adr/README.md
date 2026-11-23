@@ -19,6 +19,7 @@ supersedes it.
 | [0008](0008-temporal-versus-app-managed-workflows.md) | Temporal for research workflows only | Accepted |
 | [0009](0009-llm-provider-abstraction.md) | LLM abstraction inside the gateway | Accepted |
 | [0010](0010-provenance-and-versioning.md) | Immutable artifacts, revisions, append-only events | Accepted |
+| [0011](0011-s3-runtime-silo.md) | Silo as the local/staging S3 runtime after MinIO image removal | Accepted |
 
 ## Consequences that need active monitoring
 

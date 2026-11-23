@@ -1,0 +1,21 @@
+{
+  "event_id": "01JB2Q8Z9K4T7V3M6R1N5C0Y0Z",
+  "event_type": "document.reprocess",
+  "schema_version": 1,
+  "occurred_at": "2026-11-22T10:00:10.000Z",
+  "producer": "reconciler@0.1.0+9f2c1ab",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "tenant_id": "public",
+  "attempt": 1,
+  "document": {
+    "document_id": "01JB2Q1H7S5D9F4K2M8N6P3R0T",
+    "revision": 1,
+    "state": "available"
+  },
+  "payload": {
+    "mode": "reparse",
+    "target_version": "parser@0.2.0",
+    "reason": "extraction rule fix",
+    "requested_by": "operator"
+  }
+}

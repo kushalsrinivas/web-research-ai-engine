@@ -1,0 +1,15 @@
+{
+  "event_id": "01JB2Q8Z9K4T7V3M6R1N5C0X8P",
+  "event_type": "document.scheduled",
+  "schema_version": 1,
+  "occurred_at": "2026-11-22T10:00:00.000Z",
+  "producer": "scheduler@0.1.0+9f2c1ab",
+  "tenant_id": "public",
+  "attempt": 1,
+  "document": {
+    "document_id": "01JB2Q1H7S5D9F4K2M8N6P3R0T",
+    "revision": 1,
+    "state": "scheduled"
+  },
+  "payload": {}
+}

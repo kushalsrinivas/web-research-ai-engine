@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wre.dev/schemas/events/v1/envelope.schema.json",
+  "title": "Document event envelope",
+  "description": "Envelope shared by every doc.* topic. Payload schemas are versioned alongside it. Unknown fields are tolerated so additive evolution does not require a schema_version bump.",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "occurred_at",
+    "producer",
+    "trace_id",
+    "tenant_id",
+    "attempt",
+    "document",
+    "payload"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "ULID, unique per produced message."
+    },
+    "event_type": {
+      "type": "string",
+      "pattern": "^document\\.[a-z_]+$"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "producer": {
+      "type": "string",
+      "minLength": 3,
+      "description": "service@semver+gitsha"
+    },
+    "trace_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "document": {
+      "type": "object",
+      "required": ["document_id", "revision", "state"],
+      "additionalProperties": true,
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "discovered",
+            "scheduled",
+            "fetched",
+            "raw_archived",
+            "parsed",
+            "normalized",
+            "deduplicated",
+            "duplicate",
+            "enriched",
+            "indexed",
+            "kg_updated",
+            "available",
+            "failed",
+            "dead_lettered",
+            "quarantined"
+          ]
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifact"
+      }
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "required": ["kind", "uri", "sha256", "bytes", "codec"],
+      "additionalProperties": true,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "codec": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

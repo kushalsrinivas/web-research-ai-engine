@@ -1,0 +1,104 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: api
+            dockerfile: deploy/compose/go.Dockerfile
+            build_args: SERVICE=api
+          - service: scheduler
+            dockerfile: deploy/compose/go.Dockerfile
+            build_args: SERVICE=scheduler
+          - service: fetcher
+            dockerfile: deploy/compose/go.Dockerfile
+            build_args: SERVICE=fetcher
+          - service: indexer
+            dockerfile: deploy/compose/go.Dockerfile
+            build_args: SERVICE=indexer
+          - service: reconciler
+            dockerfile: deploy/compose/go.Dockerfile
+            build_args: SERVICE=reconciler
+          - service: parser
+            dockerfile: deploy/compose/python.Dockerfile
+            build_args: ""
+          - service: enricher
+            dockerfile: deploy/compose/python.Dockerfile
+            build_args: ""
+          - service: graph-builder
+            dockerfile: deploy/compose/python.Dockerfile
+            build_args: ""
+          - service: llm-gateway
+            dockerfile: deploy/compose/python.Dockerfile
+            build_args: ""
+          - service: research-orchestrator
+            dockerfile: deploy/compose/python.Dockerfile
+            build_args: ""
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/${{ matrix.service }}:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/${{ matrix.service }}:latest
+          build-args: |
+            ${{ matrix.build_args }}
+            VERSION=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.dockerfile }}
+
+  deploy-staging:
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && vars.STAGING_HOST != ''
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ vars.STAGING_HOST }}
+          username: ${{ vars.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          envs: GHCR_TOKEN,GHCR_USER,IMAGE_PREFIX,TAG,VERSION,STAGING_DIR
+          script: |
+            set -euo pipefail
+            cd "$STAGING_DIR"
+            git fetch origin main
+            git checkout main
+            git pull --ff-only origin main
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            export IMAGE_PREFIX TAG VERSION
+            docker compose pull
+            docker compose up -d --remove-orphans --wait
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          IMAGE_PREFIX: ghcr.io/${{ github.repository }}
+          TAG: ${{ github.sha }}
+          VERSION: ${{ github.sha }}
+          STAGING_DIR: ${{ vars.STAGING_DIR || '/opt/wre' }}

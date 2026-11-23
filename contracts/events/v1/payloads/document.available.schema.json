@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wre.dev/schemas/events/v1/payloads/document.available.schema.json",
+  "title": "document.available payload",
+  "type": "object",
+  "required": ["gate", "gate_status", "chunks", "index_version", "promoted", "live_revision"],
+  "additionalProperties": true,
+  "properties": {
+    "gate": {"type": "string", "enum": ["index", "kg"]},
+    "gate_status": {"type": "string", "enum": ["pending", "done", "failed", "skipped"]},
+    "chunks": {"type": "integer", "minimum": 0},
+    "index_version": {"type": "string", "minLength": 1},
+    "promoted": {"const": true},
+    "live_revision": {"type": "integer", "minimum": 1}
+  }
+}

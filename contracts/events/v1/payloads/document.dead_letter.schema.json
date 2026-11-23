@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wre.dev/schemas/events/v1/payloads/document.dead_letter.schema.json",
+  "title": "document.dead_letter payload",
+  "type": "object",
+  "required": [
+    "original_topic",
+    "original_partition",
+    "original_offset",
+    "stage",
+    "attempts",
+    "error",
+    "processor_version",
+    "first_failed_at",
+    "dead_lettered_at"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "original_topic": {"type": "string", "minLength": 1},
+    "original_partition": {"type": "integer", "minimum": 0},
+    "original_offset": {"type": "integer", "minimum": 0},
+    "stage": {"type": "string", "minLength": 1},
+    "attempts": {"type": "integer", "minimum": 1},
+    "error": {
+      "type": "object",
+      "required": ["class", "code"],
+      "additionalProperties": true,
+      "properties": {
+        "class": {
+          "type": "string",
+          "enum": ["transient", "rate_limited", "permanent", "policy", "dependency", "budget", "bug"]
+        },
+        "code": {"type": "string", "minLength": 1},
+        "message": {"type": "string"}
+      }
+    },
+    "processor_version": {"type": "string", "minLength": 1},
+    "first_failed_at": {"type": "string", "format": "date-time"},
+    "dead_lettered_at": {"type": "string", "format": "date-time"}
+  }
+}

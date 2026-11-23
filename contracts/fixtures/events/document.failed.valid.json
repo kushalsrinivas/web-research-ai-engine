@@ -1,0 +1,23 @@
+{
+  "event_id": "01JB2Q8Z9K4T7V3M6R1N5C0X8X",
+  "event_type": "document.failed",
+  "schema_version": 1,
+  "occurred_at": "2026-11-22T10:00:07.000Z",
+  "producer": "parser@0.1.0+9f2c1ab",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "tenant_id": "public",
+  "attempt": 3,
+  "document": {
+    "document_id": "01JB2Q1H7S5D9F4K2M8N6P3R0T",
+    "revision": 1,
+    "state": "failed"
+  },
+  "payload": {
+    "stage": "parser",
+    "failure_class": "permanent",
+    "code": "EMPTY_EXTRACTION",
+    "message": "no main content above threshold",
+    "retryable": false,
+    "attempts": 3
+  }
+}

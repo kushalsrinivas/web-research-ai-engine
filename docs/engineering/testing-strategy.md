@@ -21,7 +21,7 @@ Non-negotiable guarantees:
 |---|---|---|---|
 | Unit | Pure functions: URL canonicalization, normalization, chunking, state guards, parsers | Every commit, no I/O | < 60 s |
 | Contract | Event/API schemas in Go and Python against shared fixtures | Every commit | < 30 s |
-| Component | One service with real Postgres + Redpanda + MinIO (testcontainers) | Every PR | < 8 min |
+| Component | One service with real Postgres + Redpanda + S3-compatible store (Silo locally) | Every PR | < 8 min |
 | Integration | Two or three stages wired end-to-end on a synthetic corpus | Every PR | < 12 min |
 | End-to-end | Full pipeline from URL to citation on a local fixture site | Every merge to main | < 20 min |
 | Performance | Ingestion and search budgets on a fixed dataset | Nightly + release candidate | < 45 min |

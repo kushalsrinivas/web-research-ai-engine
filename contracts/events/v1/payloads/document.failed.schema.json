@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wre.dev/schemas/events/v1/payloads/document.failed.schema.json",
+  "title": "document.failed payload",
+  "type": "object",
+  "required": ["stage", "failure_class", "code", "retryable", "attempts"],
+  "additionalProperties": true,
+  "properties": {
+    "stage": {"type": "string", "minLength": 1},
+    "failure_class": {
+      "type": "string",
+      "enum": ["transient", "rate_limited", "permanent", "policy", "dependency", "budget", "bug"]
+    },
+    "code": {"type": "string", "minLength": 1},
+    "message": {"type": "string"},
+    "retryable": {"type": "boolean"},
+    "attempts": {"type": "integer", "minimum": 1}
+  }
+}

@@ -1,0 +1,67 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: local
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: wre-edge
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8080"]
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "([^:]+):.*"
+        target_label: service
+        replacement: "${1}"
+
+  - job_name: wre-ingestion
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "scheduler:8081"
+          - "fetcher:8082"
+          - "indexer:8083"
+          - "parser:8085"
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "([^:]+):.*"
+        target_label: service
+        replacement: "${1}"
+
+  - job_name: wre-intelligence
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "enricher:8086"
+          - "graph-builder:8087"
+          - "llm-gateway:8088"
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "([^:]+):.*"
+        target_label: service
+        replacement: "${1}"
+
+  - job_name: wre-research
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["research-orchestrator:8089"]
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "([^:]+):.*"
+        target_label: service
+        replacement: "${1}"
+
+  - job_name: wre-ops
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["reconciler:8084"]
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "([^:]+):.*"
+        target_label: service
+        replacement: "${1}"

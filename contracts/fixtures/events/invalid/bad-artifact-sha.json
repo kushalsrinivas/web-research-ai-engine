@@ -1,0 +1,32 @@
+{
+  "event_id": "01JB2Q8Z9K4T7V3M6R1N5C0X8Q",
+  "event_type": "document.fetched",
+  "schema_version": 1,
+  "occurred_at": "2026-11-22T10:00:01.000Z",
+  "producer": "fetcher@0.1.0+9f2c1ab",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "tenant_id": "public",
+  "attempt": 1,
+  "document": {
+    "document_id": "01JB2Q1H7S5D9F4K2M8N6P3R0T",
+    "revision": 1,
+    "state": "raw_archived"
+  },
+  "artifacts": [
+    {
+      "kind": "raw",
+      "uri": "s3://wre-raw/public/raw.html",
+      "sha256": "not-a-sha256",
+      "bytes": 10,
+      "codec": "identity"
+    }
+  ],
+  "payload": {
+    "http_status": 200,
+    "content_type": "text/html",
+    "content_length": 10,
+    "redirects": 0,
+    "renderer_used": false,
+    "elapsed_ms": 12
+  }
+}
