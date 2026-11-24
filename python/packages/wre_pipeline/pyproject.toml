@@ -10,6 +10,7 @@ dependencies = [
     "opentelemetry-instrumentation-aiohttp-server>=0.66b0,<1",
     "opentelemetry-sdk>=1.45,<2",
     "prometheus-client>=0.21,<1",
+    "psycopg[binary,pool]>=3.2,<4",
 ]
 
 [build-system]

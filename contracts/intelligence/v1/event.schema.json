@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wre.dev/schemas/intelligence/v1/event.schema.json",
+  "title": "Extracted event",
+  "type": "object",
+  "required": [
+    "document_id", "revision", "event_type", "commitment_status", "modality",
+    "description", "quote", "char_start", "char_end", "confidence",
+    "extraction_confidence", "event_classification_confidence", "extractor_version"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "event_id": {"type": "string"},
+    "document_id": {"type": "string"},
+    "revision": {"type": "integer", "minimum": 1},
+    "event_type": {"type": "string", "minLength": 1},
+    "subject_entity_id": {"type": ["string", "null"]},
+    "object_entity_id": {"type": ["string", "null"]},
+    "location_text": {"type": ["string", "null"]},
+    "event_time": {"type": ["string", "null"], "format": "date-time"},
+    "event_time_precision": {"type": "string", "enum": ["year", "month", "day", "unknown"]},
+    "amount": {"type": ["number", "null"]},
+    "currency": {"type": ["string", "null"]},
+    "amount_original": {"type": ["string", "null"]},
+    "commitment_status": {
+      "type": "string",
+      "enum": [
+        "announced", "planned", "proposed", "approved", "funded", "under_construction",
+        "operational", "completed", "expected", "alleged", "estimated"
+      ]
+    },
+    "modality": {
+      "type": "string",
+      "enum": ["confirmed", "announced", "planned", "proposed", "expected", "alleged", "estimated"]
+    },
+    "description": {"type": "string", "minLength": 1},
+    "quote": {"type": "string", "minLength": 1},
+    "char_start": {"type": "integer", "minimum": 0},
+    "char_end": {"type": "integer", "minimum": 1},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "extraction_confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "event_classification_confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "entity_resolution_confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "verification_confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "evidence_document_ids": {"type": "array", "items": {"type": "string"}},
+    "extractor_version": {"type": "string", "minLength": 1}
+  }
+}

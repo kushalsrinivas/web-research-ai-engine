@@ -3,7 +3,10 @@
 A provenance-first web research platform. Phase 1 built the repository, development
 environment, and infrastructure foundation. Phase 2 added the source registry and
 adaptive scheduling. Phase 3 adds the distributed crawler. Phase 4 adds the ETL and
-document-processing pipeline.
+document-processing pipeline. Phase 5 adds near-duplicate clustering, evidence
+lineage, and entity resolution. Phase 6 adds entity, event, and claim extraction
+with exact evidence spans. Phase 7 projects the authoritative records into a
+temporal, versioned knowledge graph.
 
 The service inventory and storage choices follow the accepted Phase 0 architecture. In
 particular, OpenSearch, Qdrant, Redis, and Neo4j are **not** in this stack: ADR-0005,
@@ -122,6 +125,62 @@ curl -s -X POST http://127.0.0.1:8085/internal/v1/etl/reprocess \
 Invalid documents are quarantined with `failed_stage = etl.*`, never promoted. See
 `docs/engineering/etl.md`.
 
+## Deduplication and entity resolution
+
+`graph-builder` clusters documents into story clusters without merging them. Exact
+duplicates, SimHash/title candidates, and body shingle Jaccard produce near-duplicate
+relations; lineage records the original, syndicated copies, citations, official
+statements, and independent reporting. Evidence weight counts independent sources, not
+document count. Semantic candidates are always review-only.
+
+Entity resolution normalizes legal names, matches known aliases/domains/official IDs, and
+returns one of `auto_match`, `review`, or `keep_separate`. Ambiguous matches remain in the
+candidate queue for operator review; fuzzy names alone never merge.
+
+```bash
+curl -s http://127.0.0.1:8087/internal/v1/dedup/stats
+curl -s http://127.0.0.1:8087/internal/v1/dedup/clusters
+curl -s -X POST http://127.0.0.1:8087/internal/v1/graph/resolve \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Tata Electronics Pvt Ltd","entity_type":"organization","domain":"tata.com"}'
+```
+
+See `docs/engineering/dedup-graph.md`.
+
+## Intelligence extraction
+
+`graph-builder` extracts entity mentions (rules, gazetteers, spaCy, then canonical
+resolution), structured events (investment, policy, construction, acquisition, product,
+contract, investigation), and claims with exact `char_start`/`char_end` spans and verbatim
+quotes. Claims carry modality, commitment status, normalized keys, and separate extraction,
+entity-resolution, support, and verification confidences. Invalid objects are quarantined
+and never enter the trusted tables.
+
+```bash
+curl -s http://127.0.0.1:8087/internal/v1/intel/stats
+curl -s http://127.0.0.1:8087/internal/v1/intel/documents/<document_id>
+curl -s http://127.0.0.1:8087/internal/v1/intel/claims?claim_type=financial
+```
+
+See `docs/engineering/intelligence.md`.
+
+## Knowledge graph
+
+`graph-builder` projects entities, claims, events, documents, and sources into a temporal
+relationship graph with `valid_from`/`valid_to` (real-world validity) and
+`observed_at`/`recorded_at` (transaction time). Every relationship is source-backed and
+belongs to a projection version; rebuilds are idempotent and old versions remain inspectable.
+
+```bash
+curl -s http://127.0.0.1:8087/internal/v1/kg/stats
+curl -s -X POST http://127.0.0.1:8087/internal/v1/kg/query \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"investments_by_location_industry","params":{"location":"Gujarat","industry":"semiconductor"}}'
+curl -s http://127.0.0.1:8087/internal/v1/kg/entities/<entity_id>/neighborhood?depth=2
+```
+
+See `docs/engineering/knowledge-graph.md`.
+
 ## Repository layout
 
 ```
@@ -136,7 +195,11 @@ internal/sources/              source registry, discovery, scoring, scheduling A
 internal/crawler/              frontier dispatch, workers, fetch, robots, archive, extraction
 internal/crawlcontract/        Kafka wire contract between scheduler and fetcher
 python/services/parser/        ETL extraction, normalization, quality, reprocessing API
+python/services/graph_builder/ dedup clusters, lineage, entity resolution, extraction
+python/services/graph_builder/src/wre_graph_builder/intel/  NER, events, claims, validation
+python/services/graph_builder/src/wre_graph_builder/kg/     temporal graph projection and queries
 contracts/documents/v1/        canonical document JSON Schema
+contracts/intelligence/v1/     mention, event, and claim JSON Schemas
 sql/migrations/                numbered, forward-only SQL
 deploy/compose/                Dockerfiles, Prometheus, Loki, Promtail, Tempo, OTel, Grafana
 scripts/                       migration runner and smoke checks

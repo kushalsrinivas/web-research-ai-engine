@@ -45,6 +45,16 @@ def test_html_extraction_keeps_metadata_and_strips_boilerplate() -> None:
     assert result.headings >= 1
 
 
+def test_html_respects_declared_utf8_charset() -> None:
+    body = (
+        "<html><head><title>Funding</title></head><body><article>"
+        "<p>Tata Electronics will invest \u20b915,000 crore in Gujarat.</p>"
+        "</article></body></html>"
+    ).encode("utf-8")
+    result = extract(body, "text/html; charset=utf-8", "https://example.com/a")
+    assert "\u20b915,000 crore" in result.text
+
+
 def test_pdf_and_docx_are_processed() -> None:
     pdf = pymupdf.open()
     page = pdf.new_page()

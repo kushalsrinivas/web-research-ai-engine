@@ -3,7 +3,12 @@ name = "wre-graph-builder"
 version = "0.1.0"
 description = "Web Research Engine graph builder service"
 requires-python = ">=3.12"
-dependencies = ["wre-pipeline"]
+dependencies = [
+    "en-core-web-sm",
+    "python-ulid>=3,<4",
+    "spacy>=3.8,<4",
+    "wre-pipeline",
+]
 
 [project.scripts]
 wre-graph-builder = "wre_graph_builder.__main__:main"
@@ -14,6 +19,7 @@ build-backend = "hatchling.build"
 
 [tool.uv.sources]
 wre-pipeline = { workspace = true }
+en-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/wre_graph_builder"]
