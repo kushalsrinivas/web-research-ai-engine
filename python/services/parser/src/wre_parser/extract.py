@@ -98,7 +98,7 @@ def extract(payload: bytes, content_type: str, url: str) -> Extraction:
     kind = detect_kind(content_type, payload)
     try:
         if kind == "html":
-            return _extract_html(payload, url)
+            return _extract_html(payload, content_type, url)
         if kind == "pdf":
             return _extract_pdf(payload)
         if kind == "docx":
@@ -109,19 +109,20 @@ def extract(payload: bytes, content_type: str, url: str) -> Extraction:
             return _extract_json(payload)
         if kind == "xml":
             return _extract_xml(payload, url)
-        return _extract_text(payload)
+        return _extract_text(payload, content_type)
     except ExtractionError:
         raise
     except Exception as exc:  # third-party parsers fail in many shapes
         raise ExtractionError(f"{kind} extraction failed: {exc}") from exc
 
 
-def _extract_html(payload: bytes, url: str) -> Extraction:
+def _extract_html(payload: bytes, content_type: str, url: str) -> Extraction:
+    text_payload = _decode_html(payload, content_type)
     warnings: list[str] = []
     extracted = None
     try:
         extracted = trafilatura.bare_extraction(
-            payload,
+            text_payload,
             url=url,
             with_metadata=True,
             include_comments=False,
@@ -132,7 +133,7 @@ def _extract_html(payload: bytes, url: str) -> Extraction:
     except Exception:
         warnings.append("trafilatura_failed")
 
-    tree = _html_tree(payload)
+    tree = _html_tree(text_payload)
     visible_chars = 0
     canonical_url = None
     headings = 0
@@ -206,7 +207,7 @@ def _extract_html(payload: bytes, url: str) -> Extraction:
     )
 
 
-def _html_tree(payload: bytes) -> lxml_html.HtmlElement | None:
+def _html_tree(payload: bytes | str) -> lxml_html.HtmlElement | None:
     try:
         return lxml_html.fromstring(
             payload, parser=lxml_html.HTMLParser(encoding=None, recover=True)
@@ -382,8 +383,8 @@ def _extract_xml(payload: bytes, url: str) -> Extraction:
     )
 
 
-def _extract_text(payload: bytes) -> Extraction:
-    text = _decode(payload)
+def _extract_text(payload: bytes, content_type: str = "") -> Extraction:
+    text = _decode_html(payload, content_type)
     return Extraction(
         kind="text",
         text=text,
@@ -392,6 +393,23 @@ def _extract_text(payload: bytes) -> Extraction:
         warnings=[] if text.strip() else ["text_empty"],
         metadata={},
     )
+
+
+def _decode_html(payload: bytes, content_type: str) -> str:
+    charset = ""
+    for part in (content_type or "").split(";"):
+        key, _, value = part.strip().partition("=")
+        if key.casefold() == "charset":
+            charset = value.strip().strip('"').strip("'")
+            break
+    for candidate in (charset, "utf-8"):
+        if not candidate:
+            continue
+        try:
+            return payload.decode(candidate)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return _decode(payload)
 
 
 def _decode(payload: bytes) -> str:

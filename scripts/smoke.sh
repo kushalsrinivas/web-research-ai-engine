@@ -117,5 +117,10 @@ SCHEDULER_URL="$BASE:$SCHEDULER_PORT" python3 "$(dirname "$0")/smoke_sources.py"
 SCHEDULER_URL="$BASE:$SCHEDULER_PORT" python3 "$(dirname "$0")/smoke_crawl.py"
 SCHEDULER_URL="$BASE:$SCHEDULER_PORT" PARSER_URL="$BASE:$PARSER_PORT" \
   python3 "$(dirname "$0")/smoke_etl.py"
+SCHEDULER_URL="$BASE:$SCHEDULER_PORT" PARSER_URL="$BASE:$PARSER_PORT" \
+  GRAPH_URL="$BASE:$GRAPH_BUILDER_PORT" python3 "$(dirname "$0")/smoke_dedup.py"
+SCHEDULER_URL="$BASE:$SCHEDULER_PORT" PARSER_URL="$BASE:$PARSER_PORT" \
+  GRAPH_URL="$BASE:$GRAPH_BUILDER_PORT" python3 "$(dirname "$0")/smoke_intel.py"
+GRAPH_URL="$BASE:$GRAPH_BUILDER_PORT" python3 "$(dirname "$0")/smoke_kg.py"
 
 echo "smoke: ok"
